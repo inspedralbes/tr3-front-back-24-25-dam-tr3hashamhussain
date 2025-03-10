@@ -1,10 +1,25 @@
-# transversals
-Esquema mínim de carpetes pels projectes transversals
+## Descripció del proyecte
+En aquest projecte desenvoluparem un joc de futbol en 2D amb Unity, on la càmera estarà situada en vista zenital per oferir una visió clara del camp. Els jugadors podran competir en mode individual o multijugador, posant a prova les seves habilitats estratègiques i de control de pilota. L'objectiu és marcar gols i guanyar partits mentre es gaudeix d'una experiència dinàmica i fluida. Amb una jugabilitat accessible però desafiant, el joc promet diversió per a tots els aficionats al futbol.
 
-És obligatori seguir aquesta estructura tot i que la podeu ampliar.
+## Adreça del gestor de tasques:
+- **Taiga.io**:
 
-## Atenció
-Un cop comenceu heu de canviar aquesta explicació amb la corresponent al vostre projecte (utilitzant markdown)
+## Tecnologíes Utilizades
+### Contenedor y despliegue:
+- **GitHub**: Control de versions y colaboracións.
+### Unity:
+---
+
+## Participants del Proyecte
+| Nom |
+|--------|
+| [Hasham Hussain ] |
+
+## Mentor del Equip
+
+| Nom        | Contacte          |
+|---------------|-------------------|
+| [ ? ]    | [?]  |
 
 # Aquest fitxer ha de contenir com a mínim:
  * Nom dels integrants
