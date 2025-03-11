@@ -1,8 +1,8 @@
 ## Descripció del proyecte
-En aquest projecte desenvoluparem un joc de futbol en 2D amb Unity, on la càmera estarà situada en vista zenital per oferir una visió clara del camp. Els jugadors podran competir en mode individual o multijugador, posant a prova les seves habilitats estratègiques i de control de pilota. L'objectiu és marcar gols i guanyar partits mentre es gaudeix d'una experiència dinàmica i fluida. Amb una jugabilitat accessible però desafiant, el joc promet diversió per a tots els aficionats al futbol.
+En aquest projecte desenvoluparem un joc similar al Flappy Bird en 2D amb Unity, on el jugador haurà de controlar un personatge que es desplaça horitzontalment esquivant obstacles. Mitjançant tocs precisos, s'haurà de mantenir en l’aire i superar desafiaments progressius. L'objectiu és aconseguir la major puntuació possible mentre es gaudeix d'una experiència senzilla però addictiva. Amb una mecànica fàcil d’aprendre però difícil de dominar, el joc oferirà un repte constant i divertit per als jugadors.
 
 ## Adreça del gestor de tasques:
-- **Taiga.io**:
+- **Taiga.io**:  [[https://tree.taiga.io/project/a23hashusraf-tr3_g4-teamroket/backlog](https://tree.taiga.io/project/a23hashusraf-tr3-hasham/backlog)].
 
 ## Tecnologíes Utilizades
 ### Contenedor y despliegue:
