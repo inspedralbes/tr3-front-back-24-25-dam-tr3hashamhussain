@@ -5,9 +5,13 @@ En aquest projecte desenvoluparem un joc similar al Flappy Bird en 2D amb Unity,
 - **Taiga.io**:  [[https://tree.taiga.io/project/a23hashusraf-tr3_g4-teamroket/backlog](https://tree.taiga.io/project/a23hashusraf-tr3-hasham/backlog)].
 
 ## Tecnologíes Utilizades
+### Frontend: 
+- **Vue.js**: Poder canviar de skin i mirar estadístiques
+### Backend:
+- **Node.js**
 ### Contenedor y despliegue:
 - **GitHub**: Control de versions y colaboracións.
-### Unity:
+- **Unity**: Creador del Joc
 ---
 
 ## Participants del Proyecte
@@ -19,13 +23,5 @@ En aquest projecte desenvoluparem un joc similar al Flappy Bird en 2D amb Unity,
 
 | Nom        | Contacte          |
 |---------------|-------------------|
-| [ ? ]    | [?]  |
+| [ Pol ]    | [pprats@inspedralbes.cat]  |
 
-# Aquest fitxer ha de contenir com a mínim:
- * Nom dels integrants
- * Nom del projecte
- * Petita descripció
- * Adreça del gestor de tasques (taiga, jira, trello...)
- * Adreça del prototip gràfic del projecte (Penpot, figma, moqups...)
- * URL de producció (quan la tingueu)
- * Estat: (explicació d'en quin punt està)
