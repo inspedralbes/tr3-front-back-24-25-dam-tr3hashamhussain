@@ -1,13 +1,22 @@
 require('dotenv').config();
 const express = require('express');
-const mongoose = require('mongoose');
-const mysql = require('mysql');
-const multer = require('multer');
+const cors = require('cors');
+const connectDB = require('./config/db');
+const db = require('./config/mysql');
+const imageRoutes = require('./routes/imageRoutes');
+const Stat = require('./models/StatModel');
 const path = require('path');
 const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Configurar CORS
+app.use(cors({
+    origin: 'http://localhost:3001', // Permitir solicitudes desde el frontend
+    methods: ['GET', 'POST'], // Métodos permitidos
+}));
 
 // Crear la carpeta uploads si no existe
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -16,95 +25,24 @@ if (!fs.existsSync(uploadsDir)) {
     console.log('Carpeta "uploads" creada.');
 }
 
-// Configuración de Multer para subir archivos
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, uploadsDir); // Guardar en src/uploads
-    },
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + path.extname(file.originalname)); // Nombre único
-    },
-});
+// Conectar a MongoDB
+connectDB();
 
-const upload = multer({ storage });
+// Middleware para parsear JSON
+app.use(express.json());
 
-// Conexión a MongoDB
-mongoose.connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-}).then(() => console.log('Conectado a MongoDB'))
-  .catch(err => console.error('Error de conexión a MongoDB:', err));
+// Rutas para imágenes
+app.use('/images', imageRoutes); // Montar las rutas de imágenes en /images
 
-// Conexión a MySQL sin especificar la base de datos inicial
-const db = mysql.createConnection({
-    host: process.env.MYSQL_HOST,
-    user: process.env.MYSQL_USER,
-    password: process.env.MYSQL_PASSWORD,
-    connectTimeout: 10000,
-});
-
-// Conectar a MySQL y crear la base de datos si no existe
-db.connect((err) => {
-    if (err) {
-        console.error('Error conectando a MySQL:', err);
-        return;
+// Endpoint para obtener estadísticas (MongoDB)
+app.get('/stats', async (req, res) => {
+    try {
+        const stats = await Stat.find(); // Obtener todas las estadísticas
+        res.status(200).json(stats);
+    } catch (err) {
+        console.error('Error al obtener las estadísticas:', err);
+        res.status(500).send('Error al obtener las estadísticas');
     }
-    console.log('Conexión exitosa a MySQL.');
-
-    // Crear la base de datos si no existe
-    const createDatabaseQuery = `CREATE DATABASE IF NOT EXISTS ${process.env.MYSQL_DATABASE}`;
-    db.query(createDatabaseQuery, (err) => {
-        if (err) {
-            console.error('Error al crear la base de datos:', err);
-            return;
-        }
-        console.log(`Base de datos "${process.env.MYSQL_DATABASE}" creada o ya existe.`);
-
-        // Usar la base de datos
-        db.changeUser({ database: process.env.MYSQL_DATABASE }, (err) => {
-            if (err) {
-                console.error('Error al seleccionar la base de datos:', err);
-                return;
-            }
-            console.log(`Usando la base de datos "${process.env.MYSQL_DATABASE}".`);
-
-            // Crear la tabla skins si no existe
-            const createTableQuery = `
-                CREATE TABLE IF NOT EXISTS skins (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    filename VARCHAR(255) NOT NULL,
-                    path VARCHAR(255) NOT NULL,
-                    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            `;
-            db.query(createTableQuery, (err) => {
-                if (err) {
-                    console.error('Error al crear la tabla skins:', err);
-                    return;
-                }
-                console.log('Tabla "skins" creada o ya existe.');
-            });
-        });
-    });
-});
-
-// Endpoint para subir imágenes
-app.post('/upload', upload.single('file'), (req, res) => {
-    if (!req.file) {
-        return res.status(400).send('No se subió ningún archivo.');
-    }
-
-    const { filename, path: filePath } = req.file;
-
-    // Guardar la información en MySQL
-    const insertQuery = 'INSERT INTO skins (filename, path) VALUES (?, ?)';
-    db.query(insertQuery, [filename, filePath], (err) => {
-        if (err) {
-            console.error('Error al insertar la skin:', err);
-            return res.status(500).send('Error al guardar la skin en la base de datos');
-        }
-        res.status(200).send('Skin subida y guardada correctamente');
-    });
 });
 
 // Endpoint para listar imágenes
@@ -116,7 +54,29 @@ app.get('/images', (req, res) => {
         res.json(files);
     });
 });
+app.get('/current-skin', async (req, res) => {
+    try {
+        // Obtener la última skin subida desde MySQL
+        const query = 'SELECT filename FROM skins ORDER BY id DESC LIMIT 1';
+        db.query(query, (err, results) => {
+            if (err) {
+                console.error('Error al obtener la skin:', err);
+                return res.status(500).json({ message: 'Error al obtener la skin' });
+            }
 
+            if (results.length === 0) {
+                return res.status(404).json({ message: 'No se encontró ninguna skin' });
+            }
+
+            const filename = results[0].filename;
+            const imageUrl = `http://localhost:3000/uploads/${filename}`;
+            res.status(200).json({ imageUrl });
+        });
+    } catch (err) {
+        console.error('Error al obtener la skin:', err);
+        res.status(500).json({ message: 'Error al obtener la skin' });
+    }
+});
 // Iniciar servidor
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);

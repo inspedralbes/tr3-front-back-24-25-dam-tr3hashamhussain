@@ -14,6 +14,5 @@ services:
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - MYSQL_DATABASE=${MYSQL_DATABASE}
     volumes:
-      - .:/app  # Montar todo el proyecto
-      - ./src/uploads:/app/src/uploads  # Montar la carpeta uploads
+      - .:/app
     restart: unless-stopped
