@@ -2,7 +2,6 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
-const db = require('./config/mysql');
 const imageRoutes = require('./routes/imageRoutes');
 const Stat = require('./models/StatModel');
 const path = require('path');
@@ -12,6 +11,20 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Sincronizar modelos con la base de datos
+const sequelize = require('./config/sequelize');
+const Skin = require('./models/SkinModel');
+
+// Sincronizar modelos con la base de datos
+
+// Sincronizar modelos con la base de datos
+sequelize.sync({ force: false }) // force: false evita eliminar y recrear las tablas
+    .then(() => {
+        console.log('Modelos sincronizados con la base de datos.');
+    })
+    .catch((err) => {
+        console.error('Error sincronizando modelos:', err);
+    });
 // Configurar CORS
 app.use(cors({
     origin: 'http://localhost:3001', // Permitir solicitudes desde el frontend
@@ -54,24 +67,21 @@ app.get('/images', (req, res) => {
         res.json(files);
     });
 });
+
 app.get('/current-skin', async (req, res) => {
     try {
-        // Obtener la última skin subida desde MySQL
-        const query = 'SELECT filename FROM skins ORDER BY id DESC LIMIT 1';
-        db.query(query, (err, results) => {
-            if (err) {
-                console.error('Error al obtener la skin:', err);
-                return res.status(500).json({ message: 'Error al obtener la skin' });
-            }
-
-            if (results.length === 0) {
-                return res.status(404).json({ message: 'No se encontró ninguna skin' });
-            }
-
-            const filename = results[0].filename;
-            const imageUrl = `http://localhost:3000/uploads/${filename}`;
-            res.status(200).json({ imageUrl });
+        // Obtener la última skin subida usando Sequelize
+        const lastSkin = await Skin.findOne({
+            order: [['id', 'DESC']], // Ordenar por ID de manera descendente
         });
+
+        if (!lastSkin) {
+            // No hay skins disponibles
+            return res.status(404).json({ message: 'No hay skins disponibles', imageUrl: null });
+        }
+
+        const imageUrl = `http://localhost:3000/uploads/${lastSkin.filename}`;
+        res.status(200).json({ message: 'Skin encontrada', imageUrl });
     } catch (err) {
         console.error('Error al obtener la skin:', err);
         res.status(500).json({ message: 'Error al obtener la skin' });
