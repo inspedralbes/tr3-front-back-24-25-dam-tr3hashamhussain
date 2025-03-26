@@ -49,7 +49,24 @@ export default defineConfig({
     ],
   },
   server: {
-    port: 3000,
+    port: 3001,
+    proxy: {
+      '/api': {
+        target: 'http://backend:3000', // Conexión al servicio backend en Docker
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+        secure: false
+      }
+    }
+  },
+
+  // Añade esta configuración para el polyfill de crypto
+  optimizeDeps: {
+    esbuildOptions: {
+      define: {
+        global: 'globalThis'
+      }
+    },
   },
   css: {
     preprocessorOptions: {

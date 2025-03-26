@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: flappybird-backend
+    ports:
+      - "3000:3000"  # Formato correcto: "host:container"
+    environment:
+      - MONGO_URI=${MONGO_URI}
+      - PORT=${PORT}
+      - MYSQL_HOST=${MYSQL_HOST}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    restart: unless-stopped
+
+  frontend:
+    build: ./Flappy-V
+    container_name: flappybird-frontend
+    ports:
+      - "3001:3001"  # Formato correcto
+    environment:
+      - NODE_OPTIONS=--openssl-legacy-provider
+      - HOST=0.0.0.0
+    volumes:
+      - ./Flappy-V:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    restart: unless-stopped
