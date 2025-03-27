@@ -1,0 +1,6 @@
+{
+  "flapStrength": 14,
+  "pipeSpawnRate": 1,
+  "pipeMoveSpeed": 30,
+  "enemySpawnChance": 100
+}
