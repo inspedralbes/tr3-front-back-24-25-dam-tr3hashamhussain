@@ -5,7 +5,7 @@ services:
     build: ./backend
     container_name: flappybird-backend
     ports:
-      - "3000:3000"  # Formato correcto: "host:container"
+      - "3000:3000"
     environment:
       - MONGO_URI=${MONGO_URI}
       - PORT=${PORT}
@@ -13,6 +13,7 @@ services:
       - MYSQL_USER=${MYSQL_USER}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - JWT_SECRET=${JWT_SECRET}  # Añade esta línea
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -24,7 +25,7 @@ services:
     build: ./Flappy-V
     container_name: flappybird-frontend
     ports:
-      - "3001:3001"  # Formato correcto
+      - "3001:3001"
     environment:
       - NODE_OPTIONS=--openssl-legacy-provider
       - HOST=0.0.0.0

@@ -1,30 +1,51 @@
 require('dotenv').config();
+// Al inicio del index.js, después de require('dotenv').config();
+console.log('Variables de entorno cargadas:');
+console.log('JWT_SECRET:', process.env.JWT_SECRET ? '*** (configurado)' : 'NO CONFIGURADO');
+console.log('MYSQL_HOST:', process.env.MYSQL_HOST);
 const express = require('express');
 const cors = require('cors');
-const connectDB = require('./config/db');
-const imageRoutes = require('./routes/imageRoutes');
-const Stat = require('./models/StatModel');
 const path = require('path');
 const fs = require('fs');
-const app = express();
 const http = require('http');
 const socketIo = require('socket.io');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
+// Inicialización de Express
+const app = express();
 const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);
 
-// Configuración CORS para Socket.IO
+// Configuración de base de datos y modelos
+const sequelize = require('./config/sequelize');
+const connectDB = require('./config/db');
+const Stat = require('./models/StatModel');
+const User = require('./models/UserModel');
+const Skin = require('./models/SkinModel');
+
+// Middlewares básicos
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Configuración CORS
+app.use(cors({
+  origin: ['http://localhost:3001', 'http://localhost:3000'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Configuración de WebSocket
 const io = socketIo(server, {
   cors: {
-    origin: ['http://localhost:3001', 'http://localhost:3000'], // Permitir Unity y Vuetify
+    origin: ['http://localhost:3001', 'http://localhost:3000'],
     methods: ['GET', 'POST'],
     credentials: true
   }
 });
-// Configuración persistente
+
+// Configuración persistente del juego
 const SETTINGS_FILE = path.join(__dirname, 'gameSettings.json');
 let gameSettings = {
   flapStrength: 10,
@@ -33,7 +54,7 @@ let gameSettings = {
   enemySpawnChance: 25
 };
 
-// Cargar configuración al iniciar
+// Funciones para manejar configuración
 function loadSettings() {
   try {
     if (fs.existsSync(SETTINGS_FILE)) {
@@ -45,20 +66,33 @@ function loadSettings() {
   }
 }
 
-// Guardar configuración
 function saveSettings() {
   fs.writeFileSync(SETTINGS_FILE, JSON.stringify(gameSettings, null, 2));
 }
 
 loadSettings();
 
-// Middleware
-app.use(cors({
-  origin: ['http://localhost:3001', 'http://localhost:3000'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true
-}));
-app.use(express.json());
+// Sincronización de modelos
+sequelize.sync({ force: false })
+  .then(() => console.log('Modelos sincronizados con la base de datos.'))
+  .catch(err => console.error('Error sincronizando modelos:', err));
+
+// Conexión a MongoDB
+connectDB();
+
+// Crear carpeta uploads si no existe
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir);
+  console.log('Carpeta "uploads" creada.');
+}
+
+// Rutas
+const imageRoutes = require('./routes/imageRoutes');
+const authRoutes = require('./routes/authRoutes');
+app.use('/api/auth', authRoutes);
+app.use('/images', imageRoutes);
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Endpoints
 app.get('/game-settings', (req, res) => {
@@ -68,7 +102,6 @@ app.get('/game-settings', (req, res) => {
 app.post('/game-settings', (req, res) => {
   const { flapStrength, pipeSpawnRate, pipeMoveSpeed, enemySpawnChance } = req.body;
 
-  // Validación mejorada
   if ([flapStrength, pipeSpawnRate, pipeMoveSpeed, enemySpawnChance].some(v => isNaN(v))) {
     return res.status(400).json({ message: 'Todos los valores deben ser números válidos' });
   }
@@ -90,46 +123,15 @@ app.post('/game-settings', (req, res) => {
   });
 });
 
-// Conexión WebSocket
+// WebSocket events
 io.on('connection', (socket) => {
   console.log('Nuevo cliente conectado:', socket.id);
-
-  // Enviar configuración inicial al conectarse
   socket.emit('configUpdated', gameSettings);
 
   socket.on('disconnect', () => {
     console.log('Cliente desconectado:', socket.id);
   });
 });
-
-// Configuración de CORS para REST API
-app.use(cors({
-  origin: 'http://localhost:3001',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
-
-// Configuración de base de datos y modelos
-const sequelize = require('./config/sequelize');
-const Skin = require('./models/SkinModel');
-
-sequelize.sync({ force: false })
-  .then(() => console.log('Modelos sincronizados con la base de datos.'))
-  .catch(err => console.error('Error sincronizando modelos:', err));
-
-// Crear carpeta uploads si no existe
-const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir);
-  console.log('Carpeta "uploads" creada.');
-}
-
-// Conectar a MongoDB
-connectDB();
-
-// Rutas
-app.use('/images', imageRoutes);
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Endpoints para estadísticas
 app.get('/stats', async (req, res) => {
@@ -175,8 +177,6 @@ app.post('/stats', async (req, res) => {
     res.status(500).json({ message: 'Error al guardar la estadística' });
   }
 });
-
-// Endpoints para configuración del juego
 
 // Endpoint para skins
 app.get('/current-skin', async (req, res) => {
