@@ -19,12 +19,9 @@ const routes = [
     component: () => import('@/pages/Register.vue'),
     meta: { requiresAuth: false }
   },
-  // Ruta comodín para manejar todas las rutas no definidas
   {
     path: '/:pathMatch(.*)*',
-    redirect: () => {
-      return localStorage.getItem('authToken') ? '/home' : '/'
-    }
+    redirect: '/'
   }
 ]
 
@@ -33,20 +30,51 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to, from, next) => {
-  const isAuthenticated = localStorage.getItem('authToken')
+router.beforeEach(async (to, from, next) => {
+  const token = localStorage.getItem('authToken');
+  const tokenExpiry = localStorage.getItem('tokenExpiry');
   
-  // Si la ruta requiere autenticación y no está autenticado
-  if (to.meta.requiresAuth && !isAuthenticated) {
-    return next('/') // Redirige al login (que ahora es la ruta '/')
+  // Limpiar datos si el token expiró
+  if (token && tokenExpiry && Date.now() > tokenExpiry) {
+    clearAuthData();
+    return next('/');
   }
-  
-  // Si está autenticado y trata de acceder a login/register
-  if ((to.name === 'Login' || to.name === 'Register') && isAuthenticated) {
-    return next('/home') // Redirige al home
-  }
-  
-  next()
-})
 
-export default router
+  // Si la ruta no requiere autenticación, continuar
+  if (!to.meta.requiresAuth) {
+    return next();
+  }
+
+  // Si no hay token, redirigir al login
+  if (!token) {
+    return next('/');
+  }
+
+  // Verificar token con el servidor
+  try {
+    const response = await fetch('http://localhost:3000/api/auth/check', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Token inválido');
+    }
+
+    // Token válido, continuar
+    return next();
+  } catch (error) {
+    console.error('Error verificando autenticación:', error);
+    clearAuthData();
+    return next('/');
+  }
+});
+
+function clearAuthData() {
+  localStorage.removeItem('authToken');
+  localStorage.removeItem('tokenExpiry');
+  localStorage.removeItem('user');
+}
+
+export default router;

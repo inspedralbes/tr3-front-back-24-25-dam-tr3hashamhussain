@@ -1,8 +1,8 @@
 require('dotenv').config();
-// Al inicio del index.js, después de require('dotenv').config();
 console.log('Variables de entorno cargadas:');
 console.log('JWT_SECRET:', process.env.JWT_SECRET ? '*** (configurado)' : 'NO CONFIGURADO');
 console.log('MYSQL_HOST:', process.env.MYSQL_HOST);
+
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -12,19 +12,49 @@ const socketIo = require('socket.io');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-// Inicialización de Express
 const app = express();
 const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);
 
-// Configuración de base de datos y modelos
+// Configuración de tiempo de inicio del servidor
+app.set('serverStartTime', Date.now());
+process.serverStartTime = app.get('serverStartTime');
+
+// Middleware para verificar reinicio del servidor
+app.use((req, res, next) => {
+  if (process.serverStartTime !== req.app.get('serverStartTime')) {
+    return res.status(401).json({ message: 'Server restarted, please login again' });
+  }
+  next();
+});
+
+// Middleware para verificar token en rutas protegidas
+app.use('/api', (req, res, next) => {
+  if (req.path === '/auth/login' || req.path === '/auth/register' || req.path === '/auth/check') {
+    return next();
+  }
+  
+  const token = req.headers['authorization']?.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({ message: 'Acceso no autorizado' });
+  }
+  
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded.user;
+    next();
+  } catch (err) {
+    res.status(401).json({ message: 'Token inválido' });
+  }
+});
+// Configuración de base de datos
 const sequelize = require('./config/sequelize');
 const connectDB = require('./config/db');
 const Stat = require('./models/StatModel');
 const User = require('./models/UserModel');
 const Skin = require('./models/SkinModel');
 
-// Middlewares básicos
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -54,7 +84,6 @@ let gameSettings = {
   enemySpawnChance: 25
 };
 
-// Funciones para manejar configuración
 function loadSettings() {
   try {
     if (fs.existsSync(SETTINGS_FILE)) {

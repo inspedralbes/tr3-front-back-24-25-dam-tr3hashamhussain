@@ -10,9 +10,43 @@
 export default {
   name: 'App',
   created() {
-    // Redirige al home si ya está autenticado al cargar la app
-    if (localStorage.getItem('authToken') && this.$route.name === 'Login') {
-      this.$router.push({ name: 'Home' })
+    this.verifyInitialAuth();
+  },
+  methods: {
+    async verifyInitialAuth() {
+      const token = localStorage.getItem('authToken');
+      const tokenExpiry = localStorage.getItem('tokenExpiry');
+      
+      // Si no hay token o está expirado, limpiar y redirigir
+      if (!token || (tokenExpiry && Date.now() > tokenExpiry)) {
+        this.clearAuthData();
+        if (this.$route.meta.requiresAuth) {
+          this.$router.push('/');
+        }
+        return;
+      }
+      
+      // Si estamos en login/register pero hay token válido, redirigir a home
+      if ((this.$route.name === 'Login' || this.$route.name === 'Register') && token) {
+        try {
+          const response = await fetch('http://localhost:3000/api/auth/check', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (response.ok) {
+            this.$router.push('/home');
+          }
+        } catch (error) {
+          this.clearAuthData();
+        }
+      }
+    },
+    clearAuthData() {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('tokenExpiry');
+      localStorage.removeItem('user');
     }
   }
 }
