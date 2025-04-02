@@ -66,12 +66,24 @@ app.use((req, res, next) => {
 
 // Configuración de WebSocket
 // En game-service/index.js
+// Configura CORS más estrictamente
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001'],
+  origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:8080'], // Añade el puerto de Unity
   methods: ['GET', 'POST', 'PUT', 'OPTIONS'],
   credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization'] // Solo los headers necesarios
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Endpoint de configuración del juego - Asegúrate que sea GET
+app.get('/game-settings', (req, res) => {
+  res.status(200).json({
+    flapStrength: gameSettings.flapStrength,
+    pipeSpawnRate: gameSettings.pipeSpawnRate,
+    pipeMoveSpeed: gameSettings.pipeMoveSpeed,
+    enemySpawnChance: gameSettings.enemySpawnChance,
+    timestamp: new Date().toISOString()
+  });
+});
 
 // Middleware de autenticación JWT
 const authenticateJWT = (req, res, next) => {

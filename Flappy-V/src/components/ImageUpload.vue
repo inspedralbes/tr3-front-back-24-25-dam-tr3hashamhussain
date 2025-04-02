@@ -2,13 +2,13 @@
   <div>
     <v-card-title class="d-flex align-center px-6 pt-6">
       <v-icon left color="primary">mdi-image</v-icon>
-      <span class="white--text">Subir Imagen</span>
+      <span class="white--text">Pujar Imatge</span>
     </v-card-title>
     
     <v-card-text class="pt-4 px-6 pb-6">
       <v-file-input
         v-model="image"
-        label="Selecciona una imagen"
+        label="Selecciona una imatge"
         prepend-icon="mdi-camera"
         accept="image/*"
         @change="uploadImage"
@@ -43,7 +43,7 @@ export default {
   methods: {
       async uploadImage() {
     if (!this.image) {
-      this.message = 'Por favor, selecciona una imagen.';
+      this.message = 'Si us plau, selecciona una imatge.';
       this.alertType = 'error';
       return;
     }
@@ -55,34 +55,34 @@ export default {
     try {
       const token = localStorage.getItem('authToken');
       if (!token) {
-        throw new Error('No hay token de autenticación');
+        throw new Error('No hi ha token d’autenticació');
       }
 
       const response = await fetch('http://localhost:3200/images/upload', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
-          // No incluir 'Content-Type': el navegador lo establecerá automáticamente con el boundary
+          // No incloure 'Content-Type': el navegador l'establirà automàticament amb el boundary
         },
         body: formData
       });
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Error en la respuesta');
+        throw new Error(errorData.message || 'Error en la resposta');
       }
       
       const data = await response.json();
-      this.message = data.message || 'Imagen subida correctamente';
+      this.message = data.message || 'Imatge pujada correctament';
       this.alertType = 'success';
       this.$emit('image-uploaded', data);
       
     } catch (error) {
-      this.message = error.message || 'Error al subir la imagen';
+      this.message = error.message || 'Error en pujar la imatge';
       this.alertType = 'error';
-      console.error('Error al subir imagen:', error);
+      console.error('Error en pujar imatge:', error);
       
-      // Redirigir a login si el token es inválido
+      // Redirigir a login si el token és invàlid
       if (error.message.includes('Token') || error.message.includes('401')) {
         localStorage.removeItem('authToken');
         this.$router.push('/login');

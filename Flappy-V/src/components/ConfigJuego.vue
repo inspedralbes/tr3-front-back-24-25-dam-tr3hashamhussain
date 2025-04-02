@@ -2,11 +2,11 @@
   <div>
     <v-card-title class="d-flex align-center px-6 pt-6">
       <v-icon left color="success">mdi-cog</v-icon>
-      <span class="white--text">Configuración del Juego</span>
+      <span class="white--text">Configuració del Joc</span>
       <v-spacer></v-spacer>
       <v-chip v-if="hasChanges" color="success" small dark>
         <v-icon left small>mdi-pencil</v-icon>
-        Cambios pendientes
+        Canvis pendents
       </v-chip>
     </v-card-title>
     
@@ -15,7 +15,7 @@
         <v-col cols="12" md="6">
           <v-text-field
             v-model.number="localSettings.flapStrength"
-            label="Fuerza de salto"
+            label="Força de salt"
             type="number"
             min="5"
             max="20"
@@ -23,12 +23,12 @@
             variant="outlined"
             color="success"
             prepend-inner-icon="mdi-bird"
-            :rules="[v => !!v || 'Campo requerido', v => (v >= 5 && v <= 20) || 'Entre 5 y 20']"
+            :rules="[v => !!v || 'Camp requerit', v => (v >= 5 && v <= 20) || 'Entre 5 i 20']"
           ></v-text-field>
           
           <v-text-field
             v-model.number="localSettings.pipeSpawnRate"
-            label="Tasa de aparición (segundos)"
+            label="Taxa d'aparició (segons)"
             type="number"
             min="0.5"
             max="5"
@@ -36,14 +36,14 @@
             variant="outlined"
             color="success"
             prepend-inner-icon="mdi-timer"
-            :rules="[v => !!v || 'Campo requerido', v => (v >= 0.5 && v <= 5) || 'Entre 0.5 y 5']"
+            :rules="[v => !!v || 'Camp requerit', v => (v >= 0.5 && v <= 5) || 'Entre 0.5 i 5']"
           ></v-text-field>
         </v-col>
         
         <v-col cols="12" md="6">
           <v-text-field
             v-model.number="localSettings.pipeMoveSpeed"
-            label="Velocidad tuberías"
+            label="Velocitat tubs"
             type="number"
             min="1"
             max="30"
@@ -51,11 +51,11 @@
             variant="outlined"
             color="success"
             prepend-inner-icon="mdi-speedometer"
-            :rules="[v => !!v || 'Campo requerido', v => (v >= 1 && v <= 30) || 'Entre 1 y 30']"
+            :rules="[v => !!v || 'Camp requerit', v => (v >= 1 && v <= 30) || 'Entre 1 i 30']"
           ></v-text-field>
           
           <div class="mt-4">
-            <v-label class="mb-2 text-caption">Probabilidad de enemigos: {{ localSettings.enemySpawnChance }}%</v-label>
+            <v-label class="mb-2 text-caption">Probabilitat d'enemics: {{ localSettings.enemySpawnChance }}%</v-label>
             <v-slider
               v-model.number="localSettings.enemySpawnChance"
               thumb-label="always"
@@ -84,7 +84,7 @@
         class="mr-4"
       >
         <v-icon left>mdi-restore</v-icon>
-        Restablecer
+        Restablir
       </v-btn>
       
       <v-btn
@@ -94,14 +94,14 @@
         :disabled="!hasChanges"
       >
         <v-icon left>mdi-content-save</v-icon>
-        Guardar cambios
+        Guardar canvis
       </v-btn>
     </v-card-actions>
     
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
       {{ snackbar.message }}
       <template v-slot:actions>
-        <v-btn variant="text" @click="snackbar.show = false">Cerrar</v-btn>
+        <v-btn variant="text" @click="snackbar.show = false">Tancar</v-btn>
       </template>
     </v-snackbar>
   </div>
@@ -154,7 +154,7 @@ watch(() => props.settings, (newVal) => {
 
 const resetSettings = () => {
   localSettings.value = { ...initialSettings.value };
-  showSnackbar('Configuración restablecida', 'info');
+  showSnackbar('Configuració restablerta', 'info');
 };
 
 const saveSettings = async () => {
@@ -162,7 +162,7 @@ const saveSettings = async () => {
   try {
     const token = localStorage.getItem('authToken');
     if (!token) {
-      throw new Error('No hay token de autenticación');
+      throw new Error('No hi ha token autenticació');
     }
 
     const response = await fetch('http://localhost:3400/game-settings', {
@@ -181,19 +181,19 @@ const saveSettings = async () => {
     
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.message || 'Error en la respuesta');
+      throw new Error(errorData.message || 'Error en la resposta');
     }
     
     const result = await response.json();
     initialSettings.value = { ...localSettings.value };
     emit('settings-saved', result);
-    showSnackbar('Configuración guardada correctamente', 'success');
+    showSnackbar('Configuració desada correctament', 'success');
   } catch (error) {
     console.error('Error:', error);
-    showSnackbar(error.message || 'Error al guardar configuración', 'error');
+    showSnackbar(error.message || 'Error en desar la configuració', 'error');
     emit('save-error', error);
     
-    // Redirigir a login si el token es inválido o no existe
+    // Redirigir a login si el token és invàlid o no existeix
     if (error.message.includes('Token') || error.message.includes('401')) {
       localStorage.removeItem('authToken');
       router.push('/login');

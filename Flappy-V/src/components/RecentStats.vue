@@ -6,7 +6,7 @@
       <v-spacer></v-spacer>
       <v-chip color="accent" small dark>
         <v-icon left small>mdi-trending-up</v-icon>
-        Reciente
+        Recent
       </v-chip>
     </v-card-title>
     
@@ -15,7 +15,7 @@
         <v-col cols="12" md="6">
           <div class="stat-display">
             <div class="stat-value">{{ recentStat.pipesPassed }}</div>
-            <div class="stat-label">Tuberías superadas</div>
+            <div class="stat-label">Tubs superats</div>
           </div>
         </v-col>
         <v-col cols="12" md="6">
@@ -43,7 +43,7 @@
     
     <v-card-text v-else class="px-6 pb-6">
       <v-alert type="info" outlined class="text-center">
-        No hay partidas recientes registradas
+        No hi ha partides recents registrades
       </v-alert>
     </v-card-text>
   </div>

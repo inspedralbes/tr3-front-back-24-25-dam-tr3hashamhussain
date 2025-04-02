@@ -1,17 +1,17 @@
 <template>
     <v-card class="service-control-card">
       <v-toolbar color="primary" dark dense>
-        <v-toolbar-title>Estado de Microservicios</v-toolbar-title>
+        <v-toolbar-title>Estat dels Microserveis</v-toolbar-title>
         <v-spacer></v-spacer>
         <v-btn 
-          v-if="false" <!-- Esto oculta el botón completamente -->
+          v-if="false" <!-- Això oculta completament el botó -->
           color="error" 
           @click="stopAllServices"
           :disabled="allServicesStopped"
           :loading="stoppingAll"
         >
           <v-icon left>mdi-stop-circle</v-icon>
-          Detener Todos (excepto Auth)
+          Aturar Tots (excepte Auth)
         </v-btn>
       </v-toolbar>
   
@@ -25,7 +25,7 @@
                   {{ service.name }}
                 </div>
                 <v-chip small :color="getStatusColor(service.status)" class="ml-2">
-                  {{ service.status === 'running' ? 'Activo' : 'Inactivo' }}
+                  {{ service.status === 'running' ? 'Actiu' : 'Inactiu' }}
                 </v-chip>
               </v-card-title>
               
@@ -56,7 +56,7 @@
         {{ snackbar.message }}
         <template v-slot:actions>
           <v-btn variant="text" @click="snackbar.show = false">
-            Cerrar
+            Tancar
           </v-btn>
         </template>
       </v-snackbar>
@@ -133,10 +133,10 @@
   
   const getStatusMessage = (status) => {
     switch(status) {
-      case 'running': return 'Servicio en funcionamiento';
-      case 'stopped': return 'Servicio detenido';
-      case 'error': return 'Error de conexión';
-      default: return 'Estado desconocido';
+      case 'running': return 'Servei en funcionament';
+      case 'stopped': return 'Servei aturat';
+      case 'error': return 'Error de connexió';
+      default: return 'Estat desconegut';
     }
   };
   
@@ -178,7 +178,7 @@
   onMounted(() => {
     refreshAllStatus();
     
-    // Actualizar estado cada 30 segundos
+    // Actualitzar estat cada 30 segons
     const intervalId = setInterval(refreshAllStatus, 30000);
     
     return () => clearInterval(intervalId);

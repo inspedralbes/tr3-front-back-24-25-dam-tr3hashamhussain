@@ -25,7 +25,7 @@ if (!process.env.MONGO_URI) {
 // Middlewares
 app.use(express.json());
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3001'],
+  origin: ['http://localhost:3000', 'http://localhost:3001'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   credentials: true
@@ -47,7 +47,10 @@ const authenticateAdmin = (req, res, next) => {
   
   if (!token) {
     console.log('Intento de acceso admin sin token a:', req.path);
-    return res.status(401).json({ message: 'Token no proporcionado' });
+    return res.status(401).json({ 
+      message: 'Token no proporcionado',
+      code: 'MISSING_TOKEN'
+    });
   }
   
   try {
@@ -55,18 +58,32 @@ const authenticateAdmin = (req, res, next) => {
     
     if (!decoded.user?.isAdmin) {
       console.log(`Usuario ${decoded.user?.email} intentó acceder a función admin`);
-      return res.status(403).json({ message: 'Se requieren privilegios de administrador' });
+      return res.status(403).json({ 
+        message: 'Se requieren privilegios de administrador',
+        code: 'ADMIN_REQUIRED'
+      });
     }
     
     req.user = decoded.user;
     next();
   } catch (err) {
     console.error('Error verificando token admin:', err.message);
-    res.status(401).json({ message: 'Token inválido o expirado' });
+    
+    const errorResponse = {
+      message: 'Token inválido o expirado',
+      code: 'INVALID_TOKEN'
+    };
+    
+    if (err.name === 'TokenExpiredError') {
+      errorResponse.message = 'Token expirado';
+      errorResponse.code = 'TOKEN_EXPIRED';
+    }
+    
+    return res.status(401).json(errorResponse);
   }
 };
 
-// Conexión a MongoDB con manejo mejorado de errores
+// Conexión a MongoDB
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -84,12 +101,10 @@ mongoose.connect(process.env.MONGO_URI, {
   process.exit(1);
 });
 
-// Endpoint público de health check mejorado
+// Endpoint público de health check
 app.get('/health', async (req, res) => {
   try {
-    // Verificar conexión a MongoDB
     await mongoose.connection.db.admin().ping();
-    
     const statsCount = await Stat.estimatedDocumentCount();
     
     res.status(200).json({
@@ -128,7 +143,6 @@ app.post('/api/service/stop', authenticateAdmin, (req, res) => {
     timestamp: new Date().toISOString()
   });
   
-  // Cierre ordenado con manejo de promesas
   setTimeout(async () => {
     try {
       console.log('Cerrando Stats Service...');
@@ -193,7 +207,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Configuración de tiempo de inicio del servidor
+// Configuración de tiempo de inicio
 app.set('serverStartTime', Date.now());
 process.serverStartTime = app.get('serverStartTime');
 
