@@ -50,12 +50,28 @@
 </template>
 
 <script>
+import { ref, watch } from 'vue';
+
 export default {
   props: {
     recentStat: {
       type: Object,
       default: null
     }
+  },
+  setup(props) {
+    const isNew = ref(false);
+    
+    watch(() => props.recentStat, (newVal) => {
+      if (newVal) {
+        isNew.value = true;
+        setTimeout(() => isNew.value = false, 5000); // Quitar el indicador "Nuevo" después de 5 segundos
+      }
+    }, { immediate: true });
+    
+    return {
+      isNew
+    };
   },
   methods: {
     formatDate(date) {

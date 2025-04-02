@@ -21,7 +21,13 @@ if (!process.env.MONGO_URI) {
   console.error('ERROR: MONGO_URI no está configurado en .env');
   process.exit(1);
 }
-
+const { Server } = require('socket.io');
+const io = new Server(server, {
+  cors: {
+    origin: ['http://localhost:3000', 'http://localhost:3001'],
+    methods: ['GET', 'POST']
+  }
+});
 // Middlewares
 app.use(express.json());
 app.use(cors({
@@ -171,6 +177,10 @@ app.post('/stats', async (req, res) => {
     });
 
     await newStat.save();
+    
+    // Emitir evento a todos los clientes conectados
+    io.emit('newStat', newStat);
+    
     res.status(201).json(newStat);
   } catch (err) {
     console.error('Error al guardar estadística:', err);

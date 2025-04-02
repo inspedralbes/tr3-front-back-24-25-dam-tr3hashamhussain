@@ -199,7 +199,7 @@ const handleSettingsError = (error) => {
 onMounted(() => {
   const token = localStorage.getItem('authToken');
   
-  socket.value = io('http://localhost:3400', {
+  socket.value = io('http://localhost:3300', { // Cambiado a conectar con el puerto 3300
     withCredentials: true,
     transports: ['websocket'],
     auth: {
@@ -209,15 +209,16 @@ onMounted(() => {
   
   // Escuchar nuevas estadísticas
   socket.value.on('newStat', (newStat) => {
-    stats.value.unshift(newStat);
+    console.log('Nueva estadística recibida:', newStat);
+    
+    // Actualizar estadística reciente
     recentStat.value = newStat;
-  });
-  
-  // Escuchar cambios de configuración
-  socket.value.on('configUpdated', (newConfig) => {
-    gameSettings.value = newConfig;
-    console.log('Configuración actualizada via WebSocket:', newConfig);
-    showSnackbar('Configuración del juego actualizada', 'info');
+    
+    // Agregar al inicio del historial
+    stats.value.unshift(newStat);
+    
+    // Mostrar notificación
+    showSnackbar(`Nueva partida registrada: ${newStat.playerName} - ${newStat.pipesPassed} tubos`, 'success');
   });
   
   // Cargar datos iniciales
