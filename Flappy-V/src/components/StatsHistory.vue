@@ -74,7 +74,7 @@
     props: {
       stats: {
         type: Array,
-        default: () => []
+        default: () => [] // Asegura un array vacío por defecto
       }
     },
     data() {
@@ -89,19 +89,20 @@
         ]
       };
     },
-    computed: {
-      totalItems() {
-        return this.stats.length;
-      },
-      totalPages() {
-        return Math.ceil(this.totalItems / this.itemsPerPage);
-      },
-      paginatedItems() {
-        const start = (this.currentPage - 1) * this.itemsPerPage;
-        const end = start + this.itemsPerPage;
-        return this.stats.slice(start, end);
-      }
+      computed: {
+    totalItems() {
+      return Array.isArray(this.stats) ? this.stats.length : 0;
     },
+    totalPages() {
+      return Math.ceil(this.totalItems / this.itemsPerPage);
+    },
+    paginatedItems() {
+      if (!Array.isArray(this.stats)) return [];
+      const start = (this.currentPage - 1) * this.itemsPerPage;
+      const end = start + this.itemsPerPage;
+      return this.stats.slice(start, end);
+    }
+  },
     methods: {
       formatDate(date) {
         return new Date(date).toLocaleString();

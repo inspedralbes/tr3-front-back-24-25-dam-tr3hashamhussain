@@ -107,7 +107,7 @@ export default {
 
       this.loading = true;
       try {
-        const response = await fetch('http://localhost:3000/api/auth/login', {
+        const response = await fetch('http://localhost:3100/api/auth/login', { // Auth service
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -153,7 +153,7 @@ export default {
     async verifyToken() {
       try {
         const token = localStorage.getItem('authToken');
-        const response = await fetch('http://localhost:3000/api/auth/check', {
+        const response = await fetch('http://localhost:3100/api/auth/check', { // Auth service
           headers: {
             'Authorization': `Bearer ${token}`
           }

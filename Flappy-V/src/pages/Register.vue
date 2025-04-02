@@ -125,7 +125,7 @@
         this.loading = true;
         
         try {
-          const response = await fetch('http://localhost:3000/api/auth/register', {
+          const response = await fetch('http://localhost:3100/api/auth/register', { // Auth service
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'

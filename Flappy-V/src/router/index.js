@@ -52,7 +52,7 @@ router.beforeEach(async (to, from, next) => {
 
   // Verificar token con el servidor
   try {
-    const response = await fetch('http://localhost:3000/api/auth/check', {
+    const response = await fetch('http://localhost:3100/api/auth/check', {
       headers: {
         'Authorization': `Bearer ${token}`
       }

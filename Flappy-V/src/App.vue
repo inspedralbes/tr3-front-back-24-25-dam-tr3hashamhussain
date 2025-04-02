@@ -29,7 +29,7 @@ export default {
       // Si estamos en login/register pero hay token válido, redirigir a home
       if ((this.$route.name === 'Login' || this.$route.name === 'Register') && token) {
         try {
-          const response = await fetch('http://localhost:3000/api/auth/check', {
+          const response = await fetch('http://localhost:3100/api/auth/check', { // Auth service
             headers: {
               'Authorization': `Bearer ${token}`
             }

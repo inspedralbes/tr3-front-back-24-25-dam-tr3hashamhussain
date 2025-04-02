@@ -11,6 +11,32 @@ import { fileURLToPath, URL } from 'node:url'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  server: {
+    port: 3001,
+    proxy: {
+      '/api/auth': {
+        target: 'http://localhost:3100',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/auth/, '/api/auth'),
+        secure: false
+      },
+      '/images': {
+        target: 'http://localhost:3200',
+        changeOrigin: true,
+        secure: false
+      },
+      '/stats': {
+        target: 'http://localhost:3300',
+        changeOrigin: true,
+        secure: false
+      },
+      '/game-settings': {
+        target: 'http://localhost:3400',
+        changeOrigin: true,
+        secure: false
+      }
+    }
+  },
   plugins: [
     VueRouter(),
     Vue({
@@ -47,17 +73,6 @@ export default defineConfig({
       '.tsx',
       '.vue',
     ],
-  },
-  server: {
-    port: 3001,
-    proxy: {
-      '/api': {
-        target: 'http://backend:3000', // Conexión al servicio backend en Docker
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-        secure: false
-      }
-    }
   },
 
   // Añade esta configuración para el polyfill de crypto

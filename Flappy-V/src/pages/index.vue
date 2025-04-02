@@ -93,8 +93,27 @@ const showSnackbar = (message, color = 'info') => {
 
 const fetchStats = async () => {
   try {
-    const response = await fetch('http://localhost:3000/stats');
-    stats.value = await response.json();
+    const token = localStorage.getItem('authToken');
+    console.log('Token:', token); // Verifica que el token existe
+    
+    const response = await fetch('http://localhost:3300/stats', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    console.log('Response status:', response.status);
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.log('Error data:', errorData);
+      throw new Error(errorData.message || 'Error en la respuesta');
+    }
+    
+    const data = await response.json();
+    console.log('Stats data:', data);
+    stats.value = data;
   } catch (error) {
     console.error('Error al obtener estadísticas:', error);
     showSnackbar('Error al obtener estadísticas', 'error');
@@ -103,7 +122,14 @@ const fetchStats = async () => {
 
 const fetchRecentStat = async () => {
   try {
-    const response = await fetch('http://localhost:3000/stats/recent');
+    const token = localStorage.getItem('authToken');
+    const response = await fetch('http://localhost:3300/stats/recent', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    if (!response.ok) throw new Error('Error en la respuesta');
     recentStat.value = await response.json();
   } catch (error) {
     console.error('Error al obtener estadística reciente:', error);
@@ -113,14 +139,31 @@ const fetchRecentStat = async () => {
 
 const fetchGameSettings = async () => {
   try {
-    const response = await fetch('http://localhost:3000/game-settings');
+    const token = localStorage.getItem('authToken');
+    const response = await fetch('http://localhost:3400/game-settings', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Error en la respuesta');
+    }
+    
     gameSettings.value = await response.json();
   } catch (error) {
     console.error('Error al obtener configuración:', error);
-    showSnackbar('Error al obtener configuración del juego', 'error');
+    showSnackbar(error.message || 'Error al obtener configuración del juego', 'error');
+    
+    // Redirigir a login si el token es inválido
+    if (error.message.includes('Token') || error.message.includes('401')) {
+      localStorage.removeItem('authToken');
+      router.push('/login');
+    }
   }
 };
-
 const handleSettingsSaved = (result) => {
   console.log('Configuración guardada:', result);
   gameSettings.value = result.gameSettings;
@@ -133,10 +176,14 @@ const handleSettingsError = (error) => {
 };
 
 onMounted(() => {
-  // Configurar Socket.IO
-  socket.value = io('http://localhost:3000', {
+  const token = localStorage.getItem('authToken');
+  
+  socket.value = io('http://localhost:3400', {
     withCredentials: true,
-    transports: ['websocket']
+    transports: ['websocket'],
+    auth: {
+      token: token
+    }
   });
   
   // Escuchar nuevas estadísticas

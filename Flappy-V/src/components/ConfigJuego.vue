@@ -129,9 +129,17 @@ watch(() => props.settings, (newVal) => {
 const saveSettings = async () => {
   loading.value = true;
   try {
-    const response = await fetch('http://localhost:3000/game-settings', {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      throw new Error('No hay token de autenticación');
+    }
+
+    const response = await fetch('http://localhost:3400/game-settings', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
       body: JSON.stringify({
         flapStrength: Number(localSettings.value.flapStrength),
         pipeSpawnRate: Number(localSettings.value.pipeSpawnRate),
@@ -140,7 +148,10 @@ const saveSettings = async () => {
       })
     });
     
-    if (!response.ok) throw new Error(await response.text());
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Error en la respuesta');
+    }
     
     const result = await response.json();
     initialSettings.value = { ...localSettings.value };
@@ -148,7 +159,13 @@ const saveSettings = async () => {
     showSnackbar('Configuración guardada correctamente', 'success');
   } catch (error) {
     console.error('Error:', error);
-    showSnackbar('Error al guardar configuración', 'error');
+    showSnackbar(error.message || 'Error al guardar configuración', 'error');
+    
+    // Redirigir a login si el token es inválido o no existe
+    if (error.message.includes('Token') || error.message.includes('401')) {
+      localStorage.removeItem('authToken');
+      router.push('/login');
+    }
   } finally {
     loading.value = false;
   }
