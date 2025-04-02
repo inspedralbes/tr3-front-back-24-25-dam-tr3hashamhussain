@@ -20,6 +20,18 @@ const routes = [
     meta: { requiresAuth: false }
   },
   {
+    path: '/config',
+    name: 'Config',
+    component: () => import('@/components/ConfigJuego.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/stats',
+    name: 'Stats',
+    component: () => import('@/components/StatsHistory.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/:pathMatch(.*)*',
     redirect: '/'
   }

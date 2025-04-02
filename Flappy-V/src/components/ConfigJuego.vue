@@ -1,13 +1,18 @@
 <template>
-  <v-card>
-    <v-card-title class="bg-primary text-white">
-      <v-icon left>mdi-cog</v-icon>
-      Configuración del Juego
+  <div>
+    <v-card-title class="d-flex align-center px-6 pt-6">
+      <v-icon left color="success">mdi-cog</v-icon>
+      <span class="white--text">Configuración del Juego</span>
+      <v-spacer></v-spacer>
+      <v-chip v-if="hasChanges" color="success" small dark>
+        <v-icon left small>mdi-pencil</v-icon>
+        Cambios pendientes
+      </v-chip>
     </v-card-title>
     
-    <v-card-text>
+    <v-card-text class="pt-4 px-6 pb-6">
       <v-row>
-        <v-col cols="12" sm="6">
+        <v-col cols="12" md="6">
           <v-text-field
             v-model.number="localSettings.flapStrength"
             label="Fuerza de salto"
@@ -15,12 +20,12 @@
             min="5"
             max="20"
             step="0.5"
-            prepend-icon="mdi-bird"
             variant="outlined"
+            color="success"
+            prepend-inner-icon="mdi-bird"
+            :rules="[v => !!v || 'Campo requerido', v => (v >= 5 && v <= 20) || 'Entre 5 y 20']"
           ></v-text-field>
-        </v-col>
-        
-        <v-col cols="12" sm="6">
+          
           <v-text-field
             v-model.number="localSettings.pipeSpawnRate"
             label="Tasa de aparición (segundos)"
@@ -28,12 +33,14 @@
             min="0.5"
             max="5"
             step="0.1"
-            prepend-icon="mdi-timer"
             variant="outlined"
+            color="success"
+            prepend-inner-icon="mdi-timer"
+            :rules="[v => !!v || 'Campo requerido', v => (v >= 0.5 && v <= 5) || 'Entre 0.5 y 5']"
           ></v-text-field>
         </v-col>
         
-        <v-col cols="12" sm="6">
+        <v-col cols="12" md="6">
           <v-text-field
             v-model.number="localSettings.pipeMoveSpeed"
             label="Velocidad tuberías"
@@ -41,24 +48,55 @@
             min="1"
             max="30"
             step="0.5"
-            prepend-icon="mdi-speedometer"
             variant="outlined"
+            color="success"
+            prepend-inner-icon="mdi-speedometer"
+            :rules="[v => !!v || 'Campo requerido', v => (v >= 1 && v <= 30) || 'Entre 1 y 30']"
           ></v-text-field>
-        </v-col>
-        
-        <v-col cols="12" sm="6">
-          <v-slider
-            v-model.number="localSettings.enemySpawnChance"
-            label="Probabilidad de enemigos"
-            thumb-label="always"
-            min="0"
-            max="100"
-            step="5"
-            prepend-icon="mdi-alert-octagon"
-          ></v-slider>
+          
+          <div class="mt-4">
+            <v-label class="mb-2 text-caption">Probabilidad de enemigos: {{ localSettings.enemySpawnChance }}%</v-label>
+            <v-slider
+              v-model.number="localSettings.enemySpawnChance"
+              thumb-label="always"
+              min="0"
+              max="100"
+              step="5"
+              color="success"
+              track-color="grey darken-1"
+              thumb-color="success"
+            >
+              <template v-slot:thumb-label="{ modelValue }">
+                {{ modelValue }}%
+              </template>
+            </v-slider>
+          </div>
         </v-col>
       </v-row>
     </v-card-text>
+    
+    <v-card-actions class="px-6 pb-6 justify-end">
+      <v-btn
+        color="success"
+        variant="tonal"
+        @click="resetSettings"
+        :disabled="!hasChanges"
+        class="mr-4"
+      >
+        <v-icon left>mdi-restore</v-icon>
+        Restablecer
+      </v-btn>
+      
+      <v-btn
+        color="success"
+        @click="saveSettings"
+        :loading="loading"
+        :disabled="!hasChanges"
+      >
+        <v-icon left>mdi-content-save</v-icon>
+        Guardar cambios
+      </v-btn>
+    </v-card-actions>
     
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
       {{ snackbar.message }}
@@ -66,19 +104,7 @@
         <v-btn variant="text" @click="snackbar.show = false">Cerrar</v-btn>
       </template>
     </v-snackbar>
-    
-    <v-card-actions class="justify-end">
-      <v-btn 
-        color="primary" 
-        @click="saveSettings"
-        :loading="loading"
-        :disabled="!hasChanges"
-      >
-        <v-icon left>mdi-content-save</v-icon>
-        Guardar
-      </v-btn>
-    </v-card-actions>
-  </v-card>
+  </div>
 </template>
 
 <script setup>
@@ -97,7 +123,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['settings-saved']);
+const emit = defineEmits(['settings-saved', 'save-error']);
 const loading = ref(false);
 const localSettings = ref({ ...props.settings });
 const initialSettings = ref({ ...props.settings });
@@ -125,6 +151,11 @@ watch(() => props.settings, (newVal) => {
   localSettings.value = { ...newVal };
   initialSettings.value = { ...newVal };
 }, { deep: true });
+
+const resetSettings = () => {
+  localSettings.value = { ...initialSettings.value };
+  showSnackbar('Configuración restablecida', 'info');
+};
 
 const saveSettings = async () => {
   loading.value = true;
@@ -160,6 +191,7 @@ const saveSettings = async () => {
   } catch (error) {
     console.error('Error:', error);
     showSnackbar(error.message || 'Error al guardar configuración', 'error');
+    emit('save-error', error);
     
     // Redirigir a login si el token es inválido o no existe
     if (error.message.includes('Token') || error.message.includes('401')) {
@@ -171,3 +203,13 @@ const saveSettings = async () => {
   }
 };
 </script>
+
+<style scoped>
+.v-card-title {
+  border-top: 3px solid #32CD32;
+}
+
+.v-text-field, .v-slider {
+  margin-bottom: 16px;
+}
+</style>

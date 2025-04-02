@@ -12,27 +12,37 @@ import { fileURLToPath, URL } from 'node:url'
 // https://vitejs.dev/config/
 export default defineConfig({
   server: {
-    port: 3001,
+    port: 3001, // Agrega esta línea para usar el puerto 3001
+    strictPort: true, // Evita que Vite busque otro puerto si 3001 está ocupado
     proxy: {
       '/api/auth': {
         target: 'http://localhost:3100',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/auth/, '/api/auth'),
+        rewrite: (path) => path.replace(/^\/api\/auth/, ''),
         secure: false
       },
       '/images': {
         target: 'http://localhost:3200',
         changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/images/, ''),
         secure: false
       },
       '/stats': {
         target: 'http://localhost:3300',
         changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/stats/, ''),
         secure: false
       },
       '/game-settings': {
         target: 'http://localhost:3400',
         changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/game-settings/, ''),
+        secure: false
+      },
+      '/health': {
+        target: 'http://localhost:3200',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/health/, '/health'),
         secure: false
       }
     }
@@ -42,7 +52,6 @@ export default defineConfig({
     Vue({
       template: { transformAssetUrls }
     }),
-    // https://github.com/vuetifyjs/vuetify-loader/tree/master/packages/vite-plugin#readme
     Vuetify({
       autoImport: true,
       styles: {
@@ -74,8 +83,6 @@ export default defineConfig({
       '.vue',
     ],
   },
-
-  // Añade esta configuración para el polyfill de crypto
   optimizeDeps: {
     esbuildOptions: {
       define: {

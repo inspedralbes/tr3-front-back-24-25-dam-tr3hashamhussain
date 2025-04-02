@@ -1,25 +1,33 @@
 <template>
-  <v-container>
-    <!-- Sección para subir imágenes -->
-      <v-card-title class="primary white--text">
-        <v-icon left>mdi-image</v-icon>
-        Subir Imagen
-      </v-card-title>
-      <v-card-text>
-        <v-file-input
-          v-model="image"
-          label="Selecciona una imagen"
-          prepend-icon="mdi-camera"
-          accept="image/*"
-          @change="uploadImage"
-          outlined
-          clearable
-        ></v-file-input>
-        <v-alert v-if="message" :type="alertType" dense outlined>
-          {{ message }}
-        </v-alert>
-      </v-card-text>
-  </v-container>
+  <div>
+    <v-card-title class="d-flex align-center px-6 pt-6">
+      <v-icon left color="primary">mdi-image</v-icon>
+      <span class="white--text">Subir Imagen</span>
+    </v-card-title>
+    
+    <v-card-text class="pt-4 px-6 pb-6">
+      <v-file-input
+        v-model="image"
+        label="Selecciona una imagen"
+        prepend-icon="mdi-camera"
+        accept="image/*"
+        @change="uploadImage"
+        outlined
+        color="primary"
+        clearable
+        :loading="loading"
+      ></v-file-input>
+      
+      <v-alert 
+        v-if="message" 
+        :type="alertType" 
+        variant="tonal"
+        class="mt-4"
+      >
+        {{ message }}
+      </v-alert>
+    </v-card-text>
+  </div>
 </template>
 
 <script>
@@ -88,7 +96,7 @@ export default {
 </script>
 
 <style scoped>
-.v-card {
-  margin-bottom: 24px;
+.v-card-title {
+  border-top: 3px solid #4169E1;
 }
 </style>

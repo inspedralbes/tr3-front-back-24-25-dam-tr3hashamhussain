@@ -94,42 +94,54 @@ const showSnackbar = (message, color = 'info') => {
 const fetchStats = async () => {
   try {
     const token = localStorage.getItem('authToken');
-    console.log('Token:', token); // Verifica que el token existe
-    
+    if (!token) {
+      throw new Error('No hay token de autenticación');
+    }
+
     const response = await fetch('http://localhost:3300/stats', {
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       }
     });
     
-    console.log('Response status:', response.status);
-    
     if (!response.ok) {
       const errorData = await response.json();
-      console.log('Error data:', errorData);
       throw new Error(errorData.message || 'Error en la respuesta');
     }
     
     const data = await response.json();
-    console.log('Stats data:', data);
     stats.value = data;
   } catch (error) {
     console.error('Error al obtener estadísticas:', error);
-    showSnackbar('Error al obtener estadísticas', 'error');
+    showSnackbar(error.message || 'Error al obtener estadísticas', 'error');
+    
+    // Redirigir a login si el token es inválido
+    if (error.message.includes('401')) {
+      localStorage.removeItem('authToken');
+      router.push('/login');
+    }
   }
 };
 
 const fetchRecentStat = async () => {
   try {
     const token = localStorage.getItem('authToken');
+    if (!token) {
+      throw new Error('No hay token de autenticación');
+    }
+
     const response = await fetch('http://localhost:3300/stats/recent', {
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       }
     });
-    if (!response.ok) throw new Error('Error en la respuesta');
+    
+    if (!response.ok) {
+      throw new Error('Error en la respuesta');
+    }
+    
     recentStat.value = await response.json();
   } catch (error) {
     console.error('Error al obtener estadística reciente:', error);
@@ -164,6 +176,7 @@ const fetchGameSettings = async () => {
     }
   }
 };
+
 const handleSettingsSaved = (result) => {
   console.log('Configuración guardada:', result);
   gameSettings.value = result.gameSettings;

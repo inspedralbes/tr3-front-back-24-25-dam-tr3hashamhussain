@@ -5,12 +5,35 @@ const jwt = require('jsonwebtoken');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
-const socketIo = require('socket.io');
+const socketIo = require('socket.io'); // Asegúrate de tener esta línea al inicio
 
 // Configuración inicial
 const app = express();
 const PORT = process.env.PORT || 3400;
 const server = http.createServer(app);
+
+const authenticateAdmin = (req, res, next) => {
+  if (req.method === 'OPTIONS') return next();
+  
+  const token = req.headers['authorization']?.split(' ')[1];
+  
+  if (!token) {
+    console.log('Intento de acceso admin sin token');
+    return res.status(401).json({ message: 'Token no proporcionado' });
+  }
+  
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!decoded.user?.isAdmin) {
+      return res.status(403).json({ message: 'Se requieren privilegios de administrador' });
+    }
+    req.user = decoded.user;
+    next();
+  } catch (err) {
+    res.status(401).json({ message: 'Token inválido o expirado' });
+  }
+};
+
 
 // Verificación de variables de entorno esenciales
 console.log('Game Service iniciado');
@@ -28,21 +51,6 @@ let gameSettings = loadSettings();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Configuración CORS mejorada
-app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001'], // Soporta ambos puertos comunes de desarrollo
-  methods: ['GET', 'POST', 'PUT', 'OPTIONS'],
-  credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
-
-// Middleware de logging para todas las solicitudes
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-  next();
-});
-
-// Configuración de WebSocket
 const io = socketIo(server, {
   cors: {
     origin: ['http://localhost:3000', 'http://localhost:3001'],
@@ -50,18 +58,31 @@ const io = socketIo(server, {
     credentials: true
   }
 });
+// Middleware de logging para todas las solicitudes
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  next();
+});
+
+// Configuración de WebSocket
+// En game-service/index.js
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://localhost:3001'],
+  methods: ['GET', 'POST', 'PUT', 'OPTIONS'],
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization'] // Solo los headers necesarios
+}));
 
 // Middleware de autenticación JWT
 const authenticateJWT = (req, res, next) => {
-  // Permitir OPTIONS para CORS y GET de settings sin autenticación
-  if (req.method === 'OPTIONS' || (req.path === '/game-settings' && req.method === 'GET')) {
+  // Excluir endpoints públicos
+  if (req.path === '/health' || req.method === 'OPTIONS') {
     return next();
   }
 
   const authHeader = req.headers.authorization;
   
   if (!authHeader) {
-    console.log('Intento de acceso sin token a:', req.path);
     return res.status(401).json({ message: 'Token no proporcionado' });
   }
 
@@ -69,7 +90,6 @@ const authenticateJWT = (req, res, next) => {
   
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
     if (err) {
-      console.error('Error verificando token:', err.message);
       return res.status(401).json({ message: 'Token inválido o expirado' });
     }
     
@@ -196,4 +216,66 @@ process.on('SIGINT', () => {
   process.exit();
 });
 
+// Agregar junto a los otros endpoints
+// En cada servicio (auth, game, image, stats)
+// En cada servicio
+app.use('/api/service', (req, res, next) => {
+  const token = req.headers['authorization']?.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({ message: 'Token no proporcionado' });
+  }
+  
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Verificar si el usuario es admin
+    if (!decoded.user.isAdmin) {
+      return res.status(403).json({ message: 'Acceso no autorizado' });
+    }
+    
+    req.user = decoded.user;
+    next();
+  } catch (err) {
+    res.status(401).json({ message: 'Token inválido' });
+  }
+});
+
+app.post('/api/service/start', (req, res) => {
+  res.json({ 
+    status: 'running',
+    message: `${serviceName} iniciado`
+  });
+});
+
+app.post('/api/service/stop', (req, res) => {
+  res.json({ 
+    status: 'stopped',
+    message: `${serviceName} detenido`
+  });
+});
+// Endpoint protegido para detener el servicio
+app.post('/api/service/stop', authenticateAdmin, (req, res) => {
+  res.json({ 
+    status: 'stopped',
+    message: 'Servicio detenido correctamente'
+  });
+});
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'running',
+    service: serviceName,
+    uptime: process.uptime()
+  });
+});
+
+// Al final de game-service/index.js
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  // Puedes decidir si cerrar el proceso o no
+});
+
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled Rejection:', err);
+});
 module.exports = { app, server };

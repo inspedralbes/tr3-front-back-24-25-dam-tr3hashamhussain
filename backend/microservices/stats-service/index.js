@@ -1,78 +1,171 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
+const http = require('http');
 const Stat = require('./models/StatModel');
 
 // Configuración inicial
 const app = express();
 const PORT = process.env.PORT || 3300;
+const server = http.createServer(app);
 
-// Middlewares básicos
+// Verificar variables de entorno esenciales
+if (!process.env.JWT_SECRET) {
+  console.error('ERROR: JWT_SECRET no está configurado en .env');
+  process.exit(1);
+}
+
+if (!process.env.MONGO_URI) {
+  console.error('ERROR: MONGO_URI no está configurado en .env');
+  process.exit(1);
+}
+
+// Middlewares
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Configuración CORS más flexible para desarrollo
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001'], // Agrega todos los puertos posibles del frontend
-  methods: ['GET', 'POST', 'OPTIONS'],
-  credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization']
+  origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3001'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  credentials: true
 }));
 
-// Middleware de logging para todas las solicitudes
+// Middleware para verificar reinicio del servidor
 app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  if (process.serverStartTime !== req.app.get('serverStartTime')) {
+    return res.status(401).json({ message: 'Server restarted, please refresh' });
+  }
   next();
 });
 
-// Middleware de autenticación JWT para rutas protegidas
-const authenticateJWT = (req, res, next) => {
-  const authHeader = req.headers.authorization;
+// Middleware para autenticación de administradores
+const authenticateAdmin = (req, res, next) => {
+  if (req.method === 'OPTIONS') return next();
   
-  if (authHeader) {
-    const token = authHeader.split(' ')[1];
+  const token = req.headers['authorization']?.split(' ')[1];
+  
+  if (!token) {
+    console.log('Intento de acceso admin sin token a:', req.path);
+    return res.status(401).json({ message: 'Token no proporcionado' });
+  }
+  
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-      if (err) {
-        console.error('JWT verification error:', err);
-        return res.sendStatus(403);
-      }
-      
-      req.user = user;
-      next();
-    });
-  } else {
-    console.log('No auth header present');
-    res.sendStatus(401);
+    if (!decoded.user?.isAdmin) {
+      console.log(`Usuario ${decoded.user?.email} intentó acceder a función admin`);
+      return res.status(403).json({ message: 'Se requieren privilegios de administrador' });
+    }
+    
+    req.user = decoded.user;
+    next();
+  } catch (err) {
+    console.error('Error verificando token admin:', err.message);
+    res.status(401).json({ message: 'Token inválido o expirado' });
   }
 };
 
-// Conexión a MongoDB
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('Conectado a MongoDB'))
-  .catch(err => {
-    console.error('Error de conexión a MongoDB:', err);
-    process.exit(1);
+// Conexión a MongoDB con manejo mejorado de errores
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  retryWrites: true,
+  w: 'majority'
+})
+.then(() => {
+  console.log('Conectado a MongoDB');
+  mongoose.connection.on('error', err => {
+    console.error('Error de conexión MongoDB:', err);
   });
+})
+.catch(err => {
+  console.error('Error inicial de conexión a MongoDB:', err);
+  process.exit(1);
+});
 
-// Ruta de verificación de salud del servicio
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    status: 'OK',
-    message: 'Stats Service is running',
-    timestamp: new Date()
+// Endpoint público de health check mejorado
+app.get('/health', async (req, res) => {
+  try {
+    // Verificar conexión a MongoDB
+    await mongoose.connection.db.admin().ping();
+    
+    const statsCount = await Stat.estimatedDocumentCount();
+    
+    res.status(200).json({
+      status: 'running',
+      service: 'Stats Service',
+      database: 'connected',
+      statsCount,
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error('Health check error:', err);
+    res.status(200).json({
+      status: 'running',
+      service: 'Stats Service',
+      database: 'disconnected',
+      error: err.message,
+      uptime: process.uptime()
+    });
+  }
+});
+
+// Endpoints protegidos de administración
+app.post('/api/service/start', authenticateAdmin, (req, res) => {
+  res.json({ 
+    status: 'running',
+    message: 'Stats Service iniciado',
+    timestamp: new Date().toISOString()
   });
 });
 
-// Rutas protegidas
-app.use('/stats', authenticateJWT);
+app.post('/api/service/stop', authenticateAdmin, (req, res) => {
+  res.json({ 
+    status: 'stopped',
+    message: 'Stats Service detenido correctamente',
+    timestamp: new Date().toISOString()
+  });
+  
+  // Cierre ordenado con manejo de promesas
+  setTimeout(async () => {
+    try {
+      console.log('Cerrando Stats Service...');
+      await new Promise((resolve) => server.close(resolve));
+      await mongoose.connection.close();
+      process.exit(0);
+    } catch (err) {
+      console.error('Error al cerrar el servicio:', err);
+      process.exit(1);
+    }
+  }, 100);
+});
 
-// Obtener todas las estadísticas
+// Endpoints de estadísticas
+app.post('/stats', async (req, res) => {
+  try {
+    const { playerId, playerName, jumps, pipesPassed, gameMode } = req.body;
+    
+    const newStat = new Stat({
+      playerId,
+      playerName: playerName || 'Jugador',
+      jumps: jumps || 0,
+      pipesPassed: pipesPassed || 0,
+      gameMode,
+      date: new Date()
+    });
+
+    await newStat.save();
+    res.status(201).json(newStat);
+  } catch (err) {
+    console.error('Error al guardar estadística:', err);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
 app.get('/stats', async (req, res) => {
   try {
-    console.log('User making request:', req.user);
     const stats = await Stat.find().sort({ date: -1 }).limit(100);
     res.status(200).json(stats);
   } catch (err) {
@@ -81,63 +174,47 @@ app.get('/stats', async (req, res) => {
   }
 });
 
-// Obtener estadística más reciente
 app.get('/stats/recent', async (req, res) => {
   try {
     const recentStat = await Stat.findOne().sort({ date: -1 });
-    if (!recentStat) {
-      return res.status(404).json({ message: 'No hay partidas registradas' });
-    }
-    res.status(200).json(recentStat);
+    res.status(200).json(recentStat || {});
   } catch (err) {
     console.error('Error al obtener estadística reciente:', err);
     res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
 
-// Guardar nueva estadística
-app.post('/stats', async (req, res) => {
-  try {
-    const { playerId, playerName, jumps, pipesPassed, gameMode } = req.body;
-    
-    if (!playerId || !playerName || !gameMode) {
-      return res.status(400).json({ message: 'Faltan campos requeridos' });
-    }
-
-    const newStat = new Stat({
-      playerId,
-      playerName,
-      jumps: jumps || 0,
-      pipesPassed: pipesPassed || 0,
-      gameMode,
-      date: new Date()
-    });
-
-    await newStat.save();
-    
-    // Emitir evento de nueva estadística (para WebSockets si estuvieran configurados)
-    // io.emit('newStat', newStat);
-    
-    res.status(201).json(newStat);
-  } catch (err) {
-    console.error('Error al guardar estadística:', err);
-    res.status(500).json({ message: 'Error interno del servidor' });
-  }
-});
-
 // Manejo de errores global
 app.use((err, req, res, next) => {
-  console.error('Error global:', err);
-  res.status(500).json({ message: 'Algo salió mal en el servidor' });
+  console.error('Error global:', err.stack);
+  res.status(500).json({ 
+    message: 'Error interno del servidor',
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
 });
+
+// Configuración de tiempo de inicio del servidor
+app.set('serverStartTime', Date.now());
+process.serverStartTime = app.get('serverStartTime');
 
 // Iniciar servidor
-app.listen(PORT, () => {
-  console.log(`Stats Service running on http://localhost:${PORT}`);
-  console.log('Environment variables:');
-  console.log('- MONGO_URI:', process.env.MONGO_URI ? '*** (configured)' : 'NOT CONFIGURED');
-  console.log('- JWT_SECRET:', process.env.JWT_SECRET ? '*** (configured)' : 'NOT CONFIGURED');
+server.listen(PORT, () => {
+  console.log(`Servidor Stats Service corriendo en http://localhost:${PORT}`);
 });
 
-// Exportar para testing
-module.exports = app;
+// Manejo de señales para cierre limpio
+const shutdown = async () => {
+  try {
+    console.log('Recibida señal de cierre. Cerrando Stats Service...');
+    await new Promise((resolve) => server.close(resolve));
+    await mongoose.connection.close();
+    console.log('Conexiones cerradas correctamente');
+    process.exit(0);
+  } catch (err) {
+    console.error('Error durante el cierre:', err);
+    process.exit(1);
+  }
+};
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);

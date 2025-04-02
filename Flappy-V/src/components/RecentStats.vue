@@ -66,30 +66,7 @@ export default {
 </script>
 
 <style scoped>
-.stat-display {
-  text-align: center;
-  padding: 1rem;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.stat-value {
-  font-size: 3rem;
-  font-weight: 700;
-  color: #fff;
-  line-height: 1;
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
-}
-
-.stat-label {
-  font-size: 1rem;
-  color: #aaa;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.transparent {
-  background: transparent !important;
+.v-card-title {
+  border-top: 3px solid #9370DB;
 }
 </style>

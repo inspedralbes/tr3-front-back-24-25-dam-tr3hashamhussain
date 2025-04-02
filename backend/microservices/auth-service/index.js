@@ -5,6 +5,12 @@ console.log('MYSQL_HOST:', process.env.MYSQL_HOST);
 
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
+const { exec } = require('child_process');
+const util = require('util');
+const execPromise = util.promisify(exec);
+const SERVICE_NAME = 'Auth Service';
+
 const app = express();
 const PORT = process.env.PORT || 3100;
 
@@ -35,7 +41,70 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Middleware para verificar token en rutas protegidas
+// Middleware de autenticación para rutas PM2
+// En cada servicio (auth, game, image, stats)
+// En cada servicio
+// Middleware para endpoints de control
+app.use('/api/service', (req, res, next) => {
+  // Permitir OPTIONS para CORS
+  if (req.method === 'OPTIONS') return next();
+  
+  const token = req.headers['authorization']?.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({ message: 'Token no proporcionado' });
+  }
+  
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Verificar si el usuario es admin
+    if (!decoded.user.isAdmin) {
+      return res.status(403).json({ message: 'Se requieren privilegios de administrador' });
+    }
+    
+    req.user = decoded.user;
+    next();
+  } catch (err) {
+    res.status(401).json({ message: 'Token inválido o expirado' });
+  }
+});
+
+app.post('/api/service/start', (req, res) => {
+  res.json({ 
+    status: 'running',
+    message: `${SERVICE_NAME} iniciado`,
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.post('/api/service/stop', (req, res) => {
+  res.json({ 
+    status: 'stopped',
+    message: `${SERVICE_NAME} detenido`,
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/health', (req, res) => {
+  try {
+    res.status(200).json({
+      status: 'running',
+      service: 'Auth Service',
+      uptime: process.uptime(),
+      dbStatus: 'connected', // Verifica conexión a DB si es necesario
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    res.status(200).json({
+      status: 'running',
+      service: 'Auth Service',
+      error: err.message,
+      uptime: process.uptime()
+    });
+  }
+});
+// Middleware para verificar token en rutas protegidas de auth
 app.use('/api/auth', (req, res, next) => {
   if (req.path === '/login' || req.path === '/register' || req.path === '/check') {
     return next();
@@ -61,7 +130,7 @@ sequelize.sync({ force: false })
   .then(() => console.log('Modelos de Auth sincronizados con la base de datos.'))
   .catch(err => console.error('Error sincronizando modelos Auth:', err));
 
-// Rutas
+// Rutas de autenticación
 const authRoutes = require('./routes/authRoutes');
 app.use('/api/auth', authRoutes);
 

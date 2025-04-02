@@ -121,27 +121,7 @@
   </script>
   
   <style scoped>
-  .transparent-table {
-    background: transparent !important;
-  }
-  
-  .transparent-table::v-deep th {
-    background-color: rgba(255, 255, 255, 0.05) !important;
-    color: #fff !important;
-    font-weight: 500;
-    letter-spacing: 0.5px;
-  }
-  
-  .transparent-table::v-deep tr {
-    background-color: rgba(255, 255, 255, 0.03) !important;
-  }
-  
-  .transparent-table::v-deep tr:hover {
-    background-color: rgba(255, 255, 255, 0.08) !important;
-  }
-  
-  .page-info {
-    min-width: 120px;
-    text-align: center;
+  .v-card-title {
+    border-top: 3px solid #00FFFF;
   }
   </style>
