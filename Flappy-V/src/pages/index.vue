@@ -37,6 +37,13 @@
           </v-card>
           <div class="border-glow" :class="{'glow-history': activeHover === 'history'}"></div>
         </div>
+        <!-- Stats Charts -->
+        <div class="card-container" @mouseenter="hoverCard('charts')" @mouseleave="hoverCard(null)">
+          <v-card class="card-content charts-card mb-8" :class="{'card-hovered': activeHover === 'charts'}">
+            <StatsCharts />
+          </v-card>
+          <div class="border-glow" :class="{'glow-charts': activeHover === 'charts'}"></div>
+        </div>
       </v-col>
     </v-row>
 
@@ -57,6 +64,7 @@ import ConfigJuego from '@/components/ConfigJuego.vue';
 import ImageUpload from '@/components/ImageUpload.vue';
 import RecentStats from '@/components/RecentStats.vue';
 import StatsHistory from '@/components/StatsHistory.vue';
+import StatsCharts from '@/components/StatsCharts.vue';
 import io from 'socket.io-client';
 
 const stats = ref([]);
@@ -359,5 +367,29 @@ onBeforeUnmount(() => {
 
 .history-card {
   border-top: 3px solid #00FFFF;
+}
+
+.glow-charts {
+  opacity: 1;
+  box-shadow: 
+    0 0 20px rgba(255, 165, 0, 0.9),
+    inset 0 0 20px rgba(255, 165, 0, 0.5);
+  border: 3px solid rgba(255, 200, 100, 0.7);
+  animation: pulse-orange 1.5s infinite alternate;
+}
+
+.charts-card {
+  border-top: 3px solid #FFA500;
+}
+
+@keyframes pulse-orange {
+  0% { 
+    box-shadow: 0 0 15px rgba(255, 165, 0, 0.7), inset 0 0 15px rgba(255, 165, 0, 0.4);
+    border-color: rgba(255, 200, 100, 0.6);
+  }
+  100% { 
+    box-shadow: 0 0 25px rgba(255, 165, 0, 1.2), inset 0 0 25px rgba(255, 165, 0, 0.7);
+    border-color: rgba(255, 220, 130, 0.9);
+  }
 }
 </style>
