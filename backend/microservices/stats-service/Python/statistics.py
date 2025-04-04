@@ -1,92 +1,103 @@
-import os
-import pandas as pd
+import pymongo
 import matplotlib.pyplot as plt
-from pymongo import MongoClient
+import numpy as np
+import os
 from dotenv import load_dotenv
-from datetime import datetime
+from pathlib import Path
 
-# Configuración
-load_dotenv(os.path.join(os.path.dirname(__file__), '../.env'))
+# Carregar variables d'entorn des de .env
+load_dotenv()
+
+# Configuració de rutes
+DIRECTORI_IMATGES = Path("backend/microservices/stats-service/Python-imatge")
+DIRECTORI_IMATGES.mkdir(parents=True, exist_ok=True)  # Crear directori si no existeix
+
+# Configuració de MongoDB
 MONGO_URI = os.getenv('MONGO_URI')
-OUTPUT_DIR = os.path.join(os.path.dirname(__file__), '../public/graphs')
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+NOM_BD = 'flappybird'  # Nom de la base de dades segons el teu .env
+NOM_COLLECCIO = 'stats'  # Nom de la col·lecció (basat en el teu model)
 
-def get_daily_jumps():
-    """Obtiene saltos diarios desde MongoDB"""
+def obtenir_mitjana_salts_per_jugador():
+    """Obté la mitjana de salts per jugador des de MongoDB"""
     try:
-        client = MongoClient(MONGO_URI)
-        db = client['flappybird']
-        stats = list(db['Stat'].find({}, {'_id': 0, 'date': 1, 'jumps': 1}))
+        # Connectar a MongoDB
+        client = pymongo.MongoClient(MONGO_URI)
+        db = client[NOM_BD]
+        colleccio = db[NOM_COLLECCIO]
         
-        if not stats:
-            print("⚠️ No hay datos en la colección Stat")
-            return None
-            
-        df = pd.DataFrame(stats)
-        df['date'] = pd.to_datetime(df['date']).dt.date  # Convertir a fecha sin hora
-        return df.groupby('date')['jumps'].sum().reset_index()
+        # Pipeline d'agregació per calcular la mitjana de salts per jugador
+        pipeline = [
+            {
+                "$group": {
+                    "_id": "$playerName",
+                    "mitjanaSalts": {"$avg": "$jumps"},
+                    "partidesJugades": {"$sum": 1}
+                }
+            },
+            {"$sort": {"mitjanaSalts": -1}},
+            {"$limit": 10}  # Limitar als 10 millors per a una millor visualització
+        ]
+        
+        resultats = list(colleccio.aggregate(pipeline))
+        return resultats
         
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"Error en connectar amb MongoDB: {e}")
         return None
     finally:
         if 'client' in locals():
             client.close()
 
-def generate_daily_jumps_plot(df):
-    """Genera gráfico de saltos por día"""
+def generar_grafic_mitjana_salts(dades):
+    """Genera un gràfic de barres amb la mitjana de salts per jugador"""
+    if not dades:
+        print("No hi ha dades per graficar")
+        return
+    
+    jugadors = [item['_id'] for item in dades]
+    mitjanes = [item['mitjanaSalts'] for item in dades]
+    
+    # Configurar el gràfic
     plt.figure(figsize=(12, 6))
+    barres = plt.bar(jugadors, mitjanes, color='skyblue')
     
-    # Gráfico de barras
-    bars = plt.bar(
-        df['date'], 
-        df['jumps'], 
-        color='#4CAF50',  # Verde
-        width=0.8, 
-        edgecolor='black',
-        alpha=0.8
-    )
+    # Afegir els valors sobre cada barra
+    for barra in barres:
+        alcada = barra.get_height()
+        plt.text(barra.get_x() + barra.get_width()/2., alcada,
+                 f'{alcada:.1f}',
+                 ha='center', va='bottom')
     
-    # Personalización
-    plt.title('Saltos Totales por Día', pad=20, fontsize=16)
-    plt.xlabel('Fecha', fontsize=12)
-    plt.ylabel('Total de Saltos', fontsize=12)
-    plt.grid(axis='y', linestyle='--', alpha=0.4)
-    
-    # Formato de fechas
-    plt.gca().xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter('%d-%b'))
+    # Personalitzar el gràfic
+    plt.title('Mitjana de Salts per Jugador', fontsize=16)
+    plt.xlabel('Jugador', fontsize=12)
+    plt.ylabel('Mitjana de Salts', fontsize=12)
     plt.xticks(rotation=45, ha='right')
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
     
-    # Añadir valores en las barras
-    for bar in bars:
-        height = bar.get_height()
-        plt.text(
-            bar.get_x() + bar.get_width()/2., 
-            height, 
-            f'{int(height)}', 
-            ha='center', 
-            va='bottom',
-            fontsize=9
-        )
-    
+    # Ajustar el disseny perquè no es retallin els noms
     plt.tight_layout()
-    plt.savefig(
-        os.path.join(OUTPUT_DIR, 'saltos_diarios.png'), 
-        dpi=150, 
-        bbox_inches='tight'
-    )
-    plt.close()
+    
+    # Ruta completa per guardar la imatge
+    ruta_imatge = DIRECTORI_IMATGES / 'mitjana_salts.png'
+    
+    # Guardar el gràfic com a imatge
+    plt.savefig(ruta_imatge)
+    print(f"Gràfic guardat a: {ruta_imatge}")
+    
+    # Mostrar el gràfic (opcional)
+    plt.show()
 
 if __name__ == "__main__":
-    print("\n📊 Generando gráfico de saltos diarios...")
+    print("Obtenint dades de MongoDB...")
+    dades_salts = obtenir_mitjana_salts_per_jugador()
     
-    data = get_daily_jumps()
-    
-    if data is not None:
-        print(f"\n📅 Datos desde {data['date'].min()} hasta {data['date'].max()}")
-        print(f"📌 Total de días: {len(data)}")
+    if dades_salts:
+        print("\nResultats trobats:")
+        for item in dades_salts:
+            print(f"{item['_id']}: {item['mitjanaSalts']:.1f} salts (en {item['partidesJugades']} partides)")
         
-        generate_daily_jumps_plot(data)
-        print(f"\n✅ Gráfico guardado en: {OUTPUT_DIR}/saltos_diarios.png")
+        print("\nGenerant gràfic...")
+        generar_grafic_mitjana_salts(dades_salts)
     else:
-        print("\n❌ No se pudieron obtener datos")
+        print("No s'han trobat dades per generar el gràfic")
